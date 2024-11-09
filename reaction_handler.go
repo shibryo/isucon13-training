@@ -66,6 +66,7 @@ func getReactionsHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "failed to get reactions")
 	}
 
+	// TODO:N+1問題を解決するために、一括で取得する
 	reactions := make([]Reaction, len(reactionModels))
 	for i := range reactionModels {
 		reaction, err := fillReactionResponse(ctx, tx, reactionModels[i])
