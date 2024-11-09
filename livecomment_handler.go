@@ -37,6 +37,25 @@ type Livecomment struct {
 	Tip        int64      `json:"tip"`
 	CreatedAt  int64      `json:"created_at"`
 }
+type LivecommentDTO struct {
+	ID         int        `db:"id"`
+	User       User       `db:"user"`
+	Livestream Livestream `db:"livestream"`
+	Comment    string     `db:"comment"`
+	Tip        int        `db:"tip"`
+	CreatedAt  time.Time  `db:"created_at"`
+}
+
+type UserDTO struct {
+	ID    int    `db:"user.id"`
+	Name  string `db:"user.name"`
+	Email string `db:"user.email"`
+}
+
+type LivestreamDTO struct {
+	ID   int    `db:"livestream.id"`
+	Name string `db:"livestream.name"`
+}
 
 type LivecommentReport struct {
 	ID          int64       `json:"id"`
@@ -84,7 +103,12 @@ func getLivecommentsHandler(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	query := "SELECT * FROM livecomments WHERE livestream_id = ? ORDER BY created_at DESC"
+	query := `SELECT *
+	FROM livecomments 
+		JOIN users ON livecomments.user_id = users.id
+		JOIN livestreams ON livecomments.livestream_id = livestreams.id
+	WHERE livestream_id = ? 
+	ORDER BY created_at DESC`
 	if c.QueryParam("limit") != "" {
 		limit, err := strconv.Atoi(c.QueryParam("limit"))
 		if err != nil {
@@ -93,8 +117,8 @@ func getLivecommentsHandler(c echo.Context) error {
 		query += fmt.Sprintf(" LIMIT %d", limit)
 	}
 
-	livecommentModels := []LivecommentModel{}
-	err = tx.SelectContext(ctx, &livecommentModels, query, livestreamID)
+	var livecommentsDTO []LivecommentDTO
+	err = tx.SelectContext(ctx, &livecommentsDTO, query, livestreamID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return c.JSON(http.StatusOK, []*Livecomment{})
 	}
@@ -103,10 +127,10 @@ func getLivecommentsHandler(c echo.Context) error {
 	}
 
 	// TODO: N+1臭い
-	livecomments, err := fillLivecommentsResponse(ctx, tx, livecommentModels)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to fill livecomments: "+err.Error())
-	}
+	// livecomments, err := fillLivecommentsResponse(ctx, tx, livecommentModels)
+	// if err != nil {
+	// 	return echo.NewHTTPError(http.StatusInternalServerError, "failed to fill livecomments: "+err.Error())
+	// }
 
 	// livecomments := make([]Livecomment, len(livecommentModels))
 	// for i := range livecommentModels {
@@ -122,7 +146,7 @@ func getLivecommentsHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
 	}
 
-	return c.JSON(http.StatusOK, livecomments)
+	return c.JSON(http.StatusOK, livecommentsDTO)
 }
 
 func getNgwords(c echo.Context) error {
@@ -575,3 +599,4 @@ func fillLivecommentReportResponse(ctx context.Context, tx *sqlx.Tx, reportModel
 	}
 	return report, nil
 }
+
