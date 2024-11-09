@@ -437,6 +437,14 @@ func fillLivecommentsResponse(ctx context.Context, tx *sqlx.Tx, livecommentModel
 		livestreamIDs[i] = model.LivestreamID
 	}
 
+	if len(userIDs) == 0 {
+		return []Livecomment{}, nil
+	}
+
+	if len(livestreamIDs) == 0 {
+		return []Livecomment{}, nil
+	}
+
 	// ユーザー情報を一括取得
 	userQuery, userArgs, err := sqlx.In("SELECT * FROM users WHERE id IN (?)", userIDs)
 	if err != nil {
